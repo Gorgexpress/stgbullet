@@ -25,7 +25,7 @@ class STGBulletFactory : public Node2D {
 	real_t clip_viewport_margin = 32.0;
 	Rect2 clip_manual_rect = Rect2();
 	uint32_t clip_type = 0;
-	Ref<Texture> texture;
+	Ref<Texture2D> texture;
 	int vframes = 1;
 	int hframes = 1;
 	int frame = 0;
@@ -46,11 +46,15 @@ class STGBulletFactory : public Node2D {
 	//Active bullets only. A linked list allows constant time deletion in the middle of a list, without changing the order of the elements.
 	List<int> _active_bullets; 
 	List<int> _unused_ids; //bullet ids are indices into the bullets vector.
+	Vector2 _scale;
 
 	void _get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_filter_clip) const;
 	void _update_bullets();
+	void _update_bullets_editor();
 	void _draw_bullets();
+	void _draw_bullets_editor();
 	void _draw_editor();
+	void _draw_collision();
 	void _get_visible_rect(Rect2 &rect);
 	
 
@@ -63,8 +67,8 @@ protected:
 public:
 	STGBulletFactory();
 	~STGBulletFactory();
-	void _area_inout(int p_status, const RID &p_area, int p_instance, int p_area_shape, int p_self_shape);
-	void _body_inout(int p_status, const RID &p_body, int p_instance, int p_body_shape, int p_area_shape);
+	void _area_inout(int p_status, const RID &p_area, ObjectID p_instance, int p_area_shape, int p_self_shape);
+	void _body_inout(int p_status, const RID &p_body, ObjectID p_instance, int p_body_shape, int p_area_shape);
 	void _shape_changed();
 
 	void set_collision_mask(uint32_t p_mask);
@@ -75,8 +79,8 @@ public:
 	Ref<Shape2D> get_collision_shape() const;
 	void set_clip_viewport_margin(real_t p_bounds_margin);
 	real_t get_clip_viewport_margin() const;
-	void set_texture(const Ref<Texture> &p_texture);
-	Ref<Texture> get_texture() const;
+	void set_texture(const Ref<Texture2D> &p_texture);
+	Ref<Texture2D> get_texture() const;
 	void set_vframes(int p_amount);
 	int get_vframes() const;
 	void set_hframes(int p_amount);

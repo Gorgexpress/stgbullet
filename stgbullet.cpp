@@ -1,15 +1,18 @@
 #include "STGBullet.h"
-#include "core/engine.h"
+#include "core/config/engine.h"
 #include "scene/main/viewport.h"
+#include "servers/physics_server_2d.h"
+#include "scene/resources/world_2d.h"
+#include "core/config/project_settings.h"
 
 
 void STGBulletFactory::set_collision_shape(const Ref<Shape2D> &p_shape) {
 	if (collision_shape.is_valid())
-		collision_shape->disconnect("changed", this, "_shape_changed");
+		collision_shape->disconnect("changed", callable_mp(this, &STGBulletFactory::_shape_changed));
 	collision_shape = p_shape;
-	update();
+	queue_redraw();
 	if (collision_shape.is_valid())
-		collision_shape->connect("changed", this, "_shape_changed");
+		collision_shape->connect("changed", callable_mp(this, &STGBulletFactory::_shape_changed));
 	//Doesn't effect shapes for bullets that have already been created for now.
 	
 }
@@ -22,7 +25,7 @@ Ref<Shape2D> STGBulletFactory::get_collision_shape() const {
 void STGBulletFactory::set_collision_mask(uint32_t p_mask) {
 
 	collision_mask = p_mask;
-	Physics2DServer::get_singleton()->area_set_collision_mask(_area, collision_mask);
+	PhysicsServer2D::get_singleton()->area_set_collision_mask(_area, collision_mask);
 }
 
 uint32_t STGBulletFactory::get_collision_mask() const {
@@ -33,7 +36,7 @@ uint32_t STGBulletFactory::get_collision_mask() const {
 void STGBulletFactory::set_collision_layer(uint32_t p_layer) {
 
 	collision_layer = p_layer;
-	Physics2DServer::get_singleton()->area_set_collision_layer(_area, collision_layer);
+	PhysicsServer2D::get_singleton()->area_set_collision_layer(_area, collision_layer);
 	
 }
 
@@ -51,27 +54,27 @@ real_t STGBulletFactory::get_clip_viewport_margin() const {
 }
 
 
-void STGBulletFactory::set_texture(const Ref<Texture> &p_texture) {
+void STGBulletFactory::set_texture(const Ref<Texture2D> &p_texture) {
 
 
 	if (p_texture == texture)
 		return;
 
-	if (texture.is_valid())
-		texture->remove_change_receptor(this);
+	/*if (texture.is_valid())
+		texture->remove_change_receptor(this);*/
 
 	texture = p_texture;
 
-	if (texture.is_valid())
-		texture->add_change_receptor(this);
+	/*if (texture.is_valid())
+		texture->add_change_receptor(this);*/
 
-	update();
+	queue_redraw();
 	emit_signal("texture_changed");
 	item_rect_changed();
-	_change_notify("texture");
+	notify_property_list_changed();
 }
 
-Ref<Texture> STGBulletFactory::get_texture() const {
+Ref<Texture2D> STGBulletFactory::get_texture() const {
 
 	return texture;
 }
@@ -81,9 +84,9 @@ void STGBulletFactory::set_vframes(int p_amount) {
 
 	ERR_FAIL_COND(p_amount < 1);
 	vframes = p_amount;
-	update();
+	queue_redraw();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 int STGBulletFactory::get_vframes() const {
 
@@ -94,9 +97,9 @@ void STGBulletFactory::set_hframes(int p_amount) {
 
 	ERR_FAIL_COND(p_amount < 1);
 	hframes = p_amount;
-	update();
+	queue_redraw();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 int STGBulletFactory::get_hframes() const {
 
@@ -112,7 +115,7 @@ void STGBulletFactory::set_frame(int p_frame) {
 
 	frame = p_frame;
 
-	_change_notify("frame");
+	notify_property_list_changed();
 	emit_signal("frame_changed");
 
 }
@@ -124,7 +127,7 @@ int STGBulletFactory::get_frame() const {
 
 void STGBulletFactory::set_centered(bool p_center) {
 	centered = p_center;
-	update();
+	queue_redraw();
 	item_rect_changed();
 }
 
@@ -134,9 +137,9 @@ bool STGBulletFactory::is_centered() const {
 
 void STGBulletFactory::set_offset(const Point2 &p_offset) {
 	offset = p_offset;
-	update();
+	queue_redraw();
 	item_rect_changed();
-	_change_notify("offset");
+	notify_property_list_changed();
 }
 
 Point2 STGBulletFactory::get_offset() const {
@@ -145,7 +148,7 @@ Point2 STGBulletFactory::get_offset() const {
 
 void STGBulletFactory::set_flip_h(bool p_flip) {
 	hflip = p_flip;
-	update();
+	queue_redraw();
 }
 
 bool STGBulletFactory::is_flipped_h() const {
@@ -154,7 +157,7 @@ bool STGBulletFactory::is_flipped_h() const {
 
 void STGBulletFactory::set_flip_v(bool p_flip) {
 	vflip = p_flip;
-	update();
+	queue_redraw();
 }
 
 bool STGBulletFactory::is_flipped_v() const {
@@ -166,7 +169,7 @@ void STGBulletFactory::set_region(bool p_region) {
 		return;
 
 	region = p_region;
-	update();
+	queue_redraw();
 }
 
 bool STGBulletFactory::is_region() const {
@@ -182,7 +185,7 @@ void STGBulletFactory::set_region_rect(const Rect2 &p_region_rect) {
 	if (region)
 		item_rect_changed();
 
-	_change_notify("region_rect");
+	notify_property_list_changed();
 }
 
 Rect2 STGBulletFactory::get_region_rect() const {
@@ -191,7 +194,7 @@ Rect2 STGBulletFactory::get_region_rect() const {
 
 void STGBulletFactory::set_region_filter_clip(bool p_enable) {
 	region_filter_clip = p_enable;
-	update();
+	queue_redraw();
 }
 
 bool STGBulletFactory::is_region_filter_clip_enabled() const {
@@ -203,7 +206,7 @@ void STGBulletFactory::set_animated(bool p_animated) {
 		return;
 
 	region = p_animated;
-	update();
+	queue_redraw();
 }
 
 bool STGBulletFactory::is_animated() const {
@@ -214,9 +217,9 @@ void STGBulletFactory::set_anim_vframes(int p_amount) {
 
 	ERR_FAIL_COND(p_amount < 1);
 	anim_vframes = p_amount;
-	update();
+	queue_redraw();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 int STGBulletFactory::get_anim_vframes() const {
 
@@ -227,9 +230,9 @@ void STGBulletFactory::set_anim_hframes(int p_amount) {
 
 	ERR_FAIL_COND(p_amount < 1);
 	anim_hframes = p_amount;
-	update();
+	queue_redraw();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 int STGBulletFactory::get_anim_hframes() const {
 
@@ -240,9 +243,9 @@ void STGBulletFactory::set_anim_frame_length(real_t p_length) {
 
 	ERR_FAIL_COND(p_length <= 0.0);
 	anim_frame_length = p_length;
-	update();
+	queue_redraw();
 	item_rect_changed();
-	_change_notify();
+	notify_property_list_changed();
 }
 real_t STGBulletFactory::get_anim_frame_length() const {
 
@@ -272,9 +275,9 @@ void STGBulletFactory::_get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_
 	if (centered) {
 		dest_offset -= frame_size / 2;
 	}
-	if (Engine::get_singleton()->get_use_pixel_snap()) {
+	/*if (Engine::get_singleton()->get_use_gpu_pixel_snap()) {
 		dest_offset = dest_offset.floor();
-	}
+	}*/
 
 	r_dst_rect = Rect2(dest_offset, frame_size);
 
@@ -287,7 +290,7 @@ void STGBulletFactory::_get_rects(Rect2 &r_src_rect, Rect2 &r_dst_rect, bool &r_
 }
 
 void STGBulletFactory::_update_bullets() {
-	//Physics2DServer *ps = Physics2DServer::get_singleton();
+	//PhysicsServer2D *ps = PhysicsServer2D::get_singleton();
 	real_t delta = get_physics_process_delta_time();
 	Rect2 visible_rect;
 	_get_visible_rect(visible_rect);
@@ -300,6 +303,7 @@ void STGBulletFactory::_update_bullets() {
 	for(int i = 0; i < _bullets.size(); i++) {
 		if (_bullets[i].is_queued_for_deletion) 
 			continue;
+		//_bullets.write[i].transform.translate(_bullets[i].transform.get_origin() + _bullets[i].velocity  * delta);
 		_bullets.write[i].transform.set_origin(_bullets[i].transform.get_origin() + _bullets[i].velocity  * delta);
 		_bullets.write[i].transform.set_rotation(_bullets[i].velocity.angle());
 		if (!visible_rect.has_point(_bullets[i].transform.get_origin())) 
@@ -310,18 +314,18 @@ void STGBulletFactory::_update_bullets() {
 	while(E) {
 		int idx = E->get();
 		if( _bullets[idx].is_queued_for_deletion) {
-			Physics2DServer::get_singleton()->area_set_shape_disabled(_area, idx, true);
+			PhysicsServer2D::get_singleton()->area_set_shape_disabled(_area, idx, true);
 			_unused_ids.push_front(_bullets[idx].id);
 			E->erase();
 		}
 		else {
 			//bullet->matrix[2] += bullet->direction * bullet->speed  * delta;
-			Physics2DServer::get_singleton()->area_set_shape_transform(_area, _bullets[idx].id, _bullets[idx].transform);
+			PhysicsServer2D::get_singleton()->area_set_shape_transform(_area, _bullets[idx].id, _bullets[idx].transform);
 		}
 		E = E->next();
 	}
 
-	update();
+	queue_redraw();
 }
 
 
@@ -331,6 +335,16 @@ void STGBulletFactory::_draw_bullets() {
 		int i = E->get();
 		draw_set_transform_matrix(_bullets[i].transform);
 		draw_texture_rect_region(texture, _bullets[i].dest_rect, _bullets[i].src_rect);
+		E = E->next();
+	}
+}
+
+void STGBulletFactory::_draw_collision() {
+	List<int>::Element *E = _active_bullets.front();
+	while(E) {
+		int i = E->get();
+		draw_set_transform_matrix(_bullets[i].transform);
+		collision_shape->draw(get_canvas_item(), get_tree()->get_debug_collisions_color());
 		E = E->next();
 	}
 }
@@ -349,24 +363,27 @@ void STGBulletFactory::_draw_editor() {
 int STGBulletFactory::create(Vector2 position, real_t angle, real_t speed) {
 	STGBullet* bullet;
 	Transform2D transform = get_transform();
-	real_t rads = Math::deg2rad(angle);
+	real_t rads = Math::deg_to_rad(angle);
 	Vector2 velocity = Vector2(cos(rads), sin(rads)) * speed;
-	transform.set_rotation(rads);
 	transform.set_origin(position);
-	if (_unused_ids.empty()) {
+	transform.set_rotation(rads);
+	transform.set_scale(_scale);
+	
+	if (_unused_ids.is_empty()) {
 		STGBullet new_bullet;
 		new_bullet.id = _bullets.size();
 		_bullets.push_back(new_bullet);
 		bullet = &_bullets.write[new_bullet.id];
 		if (collision_shape != NULL) 
-			Physics2DServer::get_singleton()->area_add_shape(_area, collision_shape->get_rid(), transform);
+			PhysicsServer2D::get_singleton()->area_add_shape(_area, collision_shape->get_rid(), transform);
 	} else {
 		int id = _unused_ids.front()->get();
 		_unused_ids.pop_front();
 		bullet = &_bullets.write[id];
+		bullet->custom_data = Variant();
 		if (collision_shape != NULL) {
-			Physics2DServer::get_singleton()->area_set_shape_transform(_area, id, transform);
-			Physics2DServer::get_singleton()->area_set_shape_disabled(_area, id, false);
+			PhysicsServer2D::get_singleton()->area_set_shape_transform(_area, id, transform);
+			PhysicsServer2D::get_singleton()->area_set_shape_disabled(_area, id, false);
 		}
 	}
 	ERR_FAIL_COND_V(_active_bullets.size() >= _bullets.size(), NULL);
@@ -434,14 +451,14 @@ real_t STGBulletFactory::get_bullet_speed(int bullet_id) const {
 
 void STGBulletFactory::set_bullet_angle(int bullet_id, real_t angle) {
 	if (bullet_id < _bullets.size()) {
-		real_t rads = Math::deg2rad(angle);
+		real_t rads = Math::deg_to_rad(angle);
 		_bullets.write[bullet_id].velocity = Vector2(cos(rads), sin(rads)) *_bullets[bullet_id].velocity.length();
 	}
 }
 
 real_t STGBulletFactory::get_bullet_angle(int bullet_id) const {
 	if (bullet_id < _bullets.size()) {
-		return Math::rad2deg(_bullets[bullet_id].velocity.angle());
+		return Math::rad_to_deg(_bullets[bullet_id].velocity.angle());
 	}
 	return 0.0;
 }
@@ -464,9 +481,10 @@ void STGBulletFactory::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			if (!Engine::get_singleton()->is_editor_hint()) {
+				_scale = get_transform().get_scale();
 				set_transform(Transform2D()); //don't want bullets to be drawn at an offset
 			}
-			Physics2DServer* ps = Physics2DServer::get_singleton();
+			PhysicsServer2D* ps = PhysicsServer2D::get_singleton();
 			ps->area_set_space(_area, get_world_2d()->get_space());
 			ps->area_set_transform(_area, Transform2D());
 			ps->area_set_collision_layer(_area, collision_layer);
@@ -484,7 +502,7 @@ void STGBulletFactory::_notification(int p_what) {
 		} break;
 		case NOTIFICATION_READY: {
 			set_physics_process(true);
-			set_as_toplevel(true);
+			set_as_top_level(true);
 			//VS::get_singleton()->canvas_item_set_z_index(get_canvas_item(), z_index);
 		} break;
 		case NOTIFICATION_DRAW: {
@@ -492,6 +510,9 @@ void STGBulletFactory::_notification(int p_what) {
 				_draw_editor();
 			}
 			_draw_bullets();
+			if (get_tree()->is_debugging_collisions_hint() && collision_shape.is_valid()) {
+				_draw_collision();
+			}
 		} break;
 
 		case NOTIFICATION_PROCESS: {
@@ -503,16 +524,19 @@ void STGBulletFactory::_notification(int p_what) {
 }
 
 
-void STGBulletFactory::_area_inout(int p_status, const RID &p_area, int p_instance, int p_area_shape, int p_self_shape) {
+void STGBulletFactory::_area_inout(int p_status, const RID &p_area, ObjectID p_instance, int p_area_shape, int p_self_shape) {
 	//ERR_FAIL_COND(p_self_shape >= _shapes.size());
 	Object* collider = ObjectDB::get_instance(p_instance);
-	emit_signal("area_entered_bullet", p_self_shape, collider);
+	if (p_status == PhysicsServer2D::AREA_BODY_ADDED) 
+		emit_signal("area_entered_bullet", p_self_shape, collider);
+	else 
+		emit_signal("area_left_bullet", p_self_shape, collider);
 	/*int bullet_id = _shapes[p_self_shape];
 	if (bullet_id != -1 && _bullet_manager->is_bullet_active(bullet_id)) {
 		emit_signal("area_entered_bullet", bullet_id, collider);
 	}*/
 }
-void STGBulletFactory::_body_inout(int p_status, const RID &p_body, int p_instance, int p_body_shape, int p_area_shape) {
+void STGBulletFactory::_body_inout(int p_status, const RID &p_body, ObjectID p_instance, int p_body_shape, int p_area_shape) {
 	//ERR_FAIL_COND(p_area_shape >= _shapes.size());
 	Object* collider = ObjectDB::get_instance(p_instance);
 	emit_signal("body_entered_bullet", p_area_shape, collider);
@@ -524,7 +548,7 @@ void STGBulletFactory::_body_inout(int p_status, const RID &p_body, int p_instan
 }
 
 void STGBulletFactory::_shape_changed() {
-	update();
+	queue_redraw();
 }
 
 void STGBulletFactory::_get_visible_rect(Rect2& rect)
@@ -600,6 +624,7 @@ void STGBulletFactory::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("frame_changed"));
 	ADD_SIGNAL(MethodInfo("texture_changed"));
 	ADD_SIGNAL(MethodInfo("area_entered_bullet", PropertyInfo(Variant::INT, "bullet_id", PROPERTY_HINT_NONE, "bullet_id"), PropertyInfo(Variant::OBJECT, "area", PROPERTY_HINT_RESOURCE_TYPE, "Area2D")));
+	ADD_SIGNAL(MethodInfo("area_left_bullet", PropertyInfo(Variant::INT, "bullet_id", PROPERTY_HINT_NONE, "bullet_id"), PropertyInfo(Variant::OBJECT, "area", PROPERTY_HINT_RESOURCE_TYPE, "Area2D")));
 	ADD_SIGNAL(MethodInfo("body_entered_bullet", PropertyInfo(Variant::INT, "bullet_id", PROPERTY_HINT_NONE, "bullet_id"), PropertyInfo(Variant::OBJECT, "body", PROPERTY_HINT_RESOURCE_TYPE, "PhysicsBody2D")));
 
 	//PHYSICS PROPERTIES
@@ -618,11 +643,11 @@ void STGBulletFactory::_bind_methods() {
 	ADD_GROUP("Animation", "");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "vframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_vframes", "get_vframes");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "hframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_hframes", "get_hframes");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "frame", PROPERTY_HINT_SPRITE_FRAME), "set_frame", "get_frame");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "frame"), "set_frame", "get_frame");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "animation_enabled"), "set_animated", "is_animated");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "anim_vframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_anim_vframes", "get_anim_vframes");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "anim_hframes", PROPERTY_HINT_RANGE, "1,16384,1"), "set_anim_hframes", "get_anim_hframes");
-	ADD_PROPERTY(PropertyInfo(Variant::REAL, "anim_frame_length", PROPERTY_HINT_NONE), "set_anim_frame_length", "get_anim_frame_length");
+	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "anim_frame_length", PROPERTY_HINT_NONE), "set_anim_frame_length", "get_anim_frame_length");
 	ADD_GROUP("Region", "region_");
 	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "region_enabled"), "set_region", "is_region");
 	ADD_PROPERTY(PropertyInfo(Variant::RECT2, "region_rect"), "set_region_rect", "get_region_rect");
@@ -630,17 +655,17 @@ void STGBulletFactory::_bind_methods() {
 }
 
 STGBulletFactory::STGBulletFactory() {
-	Physics2DServer* ps = Physics2DServer::get_singleton();
+	PhysicsServer2D* ps = PhysicsServer2D::get_singleton();
 	_area = ps->area_create();
 	ps->area_set_transform(_area, Transform2D());
 	ps->area_attach_object_instance_id(_area, get_instance_id());
 	ps->area_set_monitorable(_area, true);
-	ps->area_set_monitor_callback(_area, this, "_body_inout");
-	ps->area_set_area_monitor_callback(_area, this, "_area_inout");
+	ps->area_set_monitor_callback(_area,  callable_mp(this, &STGBulletFactory::_body_inout));
+	ps->area_set_area_monitor_callback(_area, callable_mp(this, &STGBulletFactory::_area_inout));
 }
 
 
 STGBulletFactory::~STGBulletFactory() {
 	if(_area.is_valid())
-		Physics2DServer::get_singleton()->free(_area);
+		PhysicsServer2D::get_singleton()->free(_area);
 }
